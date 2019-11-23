@@ -26,7 +26,7 @@ network_from_LDA<-function(LDAobject,deleted_topics=c(),topic_names=c(),save_fil
   # first extract the theta matrix form the topicmodel object
   theta<-LDAobject@gamma
   # adding names for culumns based on k
-  colnames(theta)<-c(1:LDAfit@k)
+  colnames(theta)<-c(1:LDAobject@k)
   
   # claculate the adjacency matrix using cosine similarity on the theta matrix
   mycosine<-cosine(as.matrix(theta))
