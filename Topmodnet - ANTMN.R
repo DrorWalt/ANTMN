@@ -6,7 +6,7 @@
 ################################
 
 
-################## Main Function
+################## Main Function LDA (*See alternative function for STM at the end of the script)
 ## LDAobject is the output of the topicmodels package LDA command
 ## deleted_topics can be left empty or can be passed a vector of topic numbers to be ommited from the network.
 ## topic_names can be left empty or passed a vector of strings, each a topic name.
@@ -82,6 +82,7 @@ network_from_LDA<-function(LDAobject,deleted_topics=c(),topic_names=c(),save_fil
   return(newg)
 }
 
+################## End of Main Function LDA
 #Example:
 mynewnet<-network_from_LDA(LDAobject=LDA.66,
                            deleted_topics=c(5,6,11,12,20,27,37),
@@ -286,3 +287,78 @@ mynewnet<-network_from_LDA(LDAobject=LDAfit,
 
 
 
+################## Main Function STM (Structural Topic Modeling)
+network_from_STM<-function(STMobject,deleted_topics=c(),topic_names=c(),save_filename="",topic_size=c()) {
+  # Importing needed packages
+  require(lsa) # for cosine similarity calculation
+  require(dplyr) # general utility
+  require(igraph) # for graph/network managment and output
+  
+  print("Importing model")
+  
+  # first extract the theta matrix form the topicmodel object
+  theta<-make.dt(STMobject)
+  theta<-theta[,-1]
+  # adding names for culumns based on k
+  colnames(theta)<-as.character(c(1:STMobject$setting$dim$K))
+  
+  # claculate the adjacency matrix using cosine similarity on the theta matrix
+  mycosine<-cosine(as.matrix(theta))
+  colnames(mycosine)<-colnames(theta)
+  rownames(mycosine)<-colnames(theta)
+  
+  # Convert to network - undirected, weighted, no diagonal
+  
+  print("Creating graph")
+  
+  topmodnet<-graph.adjacency(mycosine,mode="undirected",weighted=T,diag=F,add.colnames="label") # Assign colnames
+  # add topicnames as name attribute of node - importend from prepare meta data in previous lines
+  if (length(topic_names)>0) {
+    print("Topic names added")
+    V(topmodnet)$name<-topic_names
+  } 
+  # add sizes if passed to funciton
+  if (length(topic_size)>0) {
+    print("Topic sizes added")
+    V(topmodnet)$topic_size<-topic_size
+  }
+  newg<-topmodnet
+  
+  # delete 'garbage' topics
+  if (length(deleted_topics)>0) {
+    print("Deleting requested topics")
+    
+    newg<-delete_vertices(topmodnet, deleted_topics)
+  }
+  
+  # run community detection and attach as node attribute
+  print("Calculating communities")
+  
+  mylouvain<-(cluster_louvain(newg)) 
+  mywalktrap<-(cluster_walktrap(newg)) 
+  myspinglass<-(cluster_spinglass(newg)) 
+  myfastgreed<-(cluster_fast_greedy(newg)) 
+  myeigen<-(cluster_leading_eigen(newg)) 
+  
+  V(newg)$louvain<-mylouvain$membership 
+  V(newg)$walktrap<-mywalktrap$membership 
+  V(newg)$spinglass<-myspinglass$membership 
+  V(newg)$fastgreed<-myfastgreed$membership 
+  V(newg)$eigen<-myeigen$membership 
+  
+  # if filename is passsed - saving object to graphml object. Can be opened with Gephi.
+  if (nchar(save_filename)>0) {
+    print("Writing graph")
+    write.graph(newg,paste0(save_filename,".graphml"),format="graphml")
+  }
+  
+  # graph is returned as object
+  return(newg)
+}
+
+################## End of Main Function STM (Structural Topic Modeling)
+
+## Example:
+mynewnet<-network_from_STM(STMobject=STMfit_63,
+                           deleted_topics=c(5,6,11,12,20,27,37),
+                           save_filename="my_net_file")
