@@ -1,3 +1,4 @@
+# ANTMN V2
 # Author: Dror Walter
 # Creating Topic Model Networks (ANTMN Method): Supplementary code
 # To Cite:
@@ -14,13 +15,15 @@
 #### For more elaboration on this option see sample code. As a default topic size is ignored
 ## save_filename can be left empty or passed a string for the filename to save. Notice that ".graphml" will be added automatically to filename
 ## *.graphml, while not associated automatically with Gephi, can be opened in Gephi using the open graph menu.
+## Bbone is set to False as default. If set to TRUE it will extract the minimal backbone of the network based on Serrano et al. (2009), leaving only significant edges.
 
-network_from_LDA<-function(LDAobject,deleted_topics=c(),topic_names=c(),save_filename="",topic_size=c()) {
+network_from_LDA<-function(LDAobject,deleted_topics=c(),topic_names=c(),save_filename="",topic_size=c(),bbone=FALSE) {
   # Importing needed packages
   require(lsa) # for cosine similarity calculation
   require(dplyr) # general utility
   require(igraph) # for graph/network managment and output
-
+  require(corpustools)
+  
   print("Importing model")
   
   # first extract the theta matrix form the topicmodel object
@@ -57,6 +60,26 @@ network_from_LDA<-function(LDAobject,deleted_topics=c(),topic_names=c(),save_fil
   newg<-delete_vertices(topmodnet, deleted_topics)
   }
   
+  # Backbone
+  if (bbone==TRUE) {
+    print("Backboning")
+    
+    nnodesBASE<-length(V(newg))
+    for (bbonelvl in rev(seq(0,1,by=0.05))) {
+      #print (bbonelvl)
+      nnodes<-length(V(backbone_filter(newg,alpha=bbonelvl)))
+      if(nnodes>=nnodesBASE) {
+        bbonelvl=bbonelvl
+        #  print ("great")
+      }
+      else{break}
+      oldbbone<-bbonelvl
+    }
+    
+    newg<-backbone_filter(newg,alpha=oldbbone)
+    
+  }
+  
   # run community detection and attach as node attribute
   print("Calculating communities")
   
@@ -86,7 +109,8 @@ network_from_LDA<-function(LDAobject,deleted_topics=c(),topic_names=c(),save_fil
 #Example:
 mynewnet<-network_from_LDA(LDAobject=LDA.66,
                            deleted_topics=c(5,6,11,12,20,27,37),
-                           save_filename="my_net_file")
+                           save_filename="my_net_file",
+                           bbone=TRUE)
 
 ################## Sample Code
 library(topicmodels) #used for topic model estimation
@@ -223,7 +247,8 @@ mynames<-c('Clinton Emails','Trump Bus Tape','Presidential Polls','Misc and Orla
 mynewnet<-network_from_LDA(LDAobject=LDAfit,
                            deleted_topics=c(5,6,11,12,20,27,37),
                            topic_names=mynames,
-                           save_filename="trythis")
+                           save_filename="trythis",
+                           bbone=TRUE)
 
 # We can also add the size of topics to the node attribute. In our example to improve model quality we removed duplicate entries
 # however, we want to re-introduce these duplicates when calculating the topic salience. 
@@ -288,11 +313,12 @@ mynewnet<-network_from_LDA(LDAobject=LDAfit,
 
 
 ################## Main Function STM (Structural Topic Modeling)
-network_from_STM<-function(STMobject,deleted_topics=c(),topic_names=c(),save_filename="",topic_size=c()) {
+network_from_STM<-function(STMobject,deleted_topics=c(),topic_names=c(),save_filename="",topic_size=c(),bbone=FALSE) {
   # Importing needed packages
   require(lsa) # for cosine similarity calculation
   require(dplyr) # general utility
   require(igraph) # for graph/network managment and output
+  require(corpustools)
   
   print("Importing model")
   
@@ -331,6 +357,26 @@ network_from_STM<-function(STMobject,deleted_topics=c(),topic_names=c(),save_fil
     newg<-delete_vertices(topmodnet, deleted_topics)
   }
   
+  # Backbone
+  if (bbone==TRUE) {
+    print("Backboning")
+    
+    nnodesBASE<-length(V(newg))
+    for (bbonelvl in rev(seq(0,1,by=0.05))) {
+      #print (bbonelvl)
+      nnodes<-length(V(backbone_filter(newg,alpha=bbonelvl)))
+      if(nnodes>=nnodesBASE) {
+        1=1
+      #  print ("great")
+      }
+      else{break}
+      oldbbone<-bbonelvl
+    }
+    
+    newg<-backbone_filter(newg,alpha=oldbbone)
+    
+  }
+
   # run community detection and attach as node attribute
   print("Calculating communities")
   
@@ -361,4 +407,5 @@ network_from_STM<-function(STMobject,deleted_topics=c(),topic_names=c(),save_fil
 ## Example:
 mynewnet<-network_from_STM(STMobject=STMfit_63,
                            deleted_topics=c(5,6,11,12,20,27,37),
-                           save_filename="my_net_file")
+                           save_filename="my_net_file",
+                           bbone=TRUE)
